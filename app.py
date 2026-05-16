@@ -7,20 +7,21 @@ def respond(message, history):
     if history is None:
         history = []
 
-    # Add user message
-    history.append({
-        "role": "user",
-        "content": message
-    })
+    response = ask_question(message)
 
-    # Generate response
-    bot_response = ask_question(message)
+    history.append(
+        {
+            "role": "user",
+            "content": message
+        }
+    )
 
-    # Add assistant response
-    history.append({
-        "role": "assistant",
-        "content": bot_response
-    })
+    history.append(
+        {
+            "role": "assistant",
+            "content": response
+        }
+    )
 
     return history
 
