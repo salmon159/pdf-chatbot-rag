@@ -1,4 +1,3 @@
-
 import gradio as gr
 
 from rag_pipeline import ask_question
@@ -13,15 +12,11 @@ def respond(message, chat_history):
 
     return "", chat_history
 
-with gr.Blocks(theme=gr.themes.Soft()) as demo:
+with gr.Blocks() as demo:
 
-    gr.Markdown(
-        "# Airlines HR Assistant"
-    )
+    gr.Markdown("# Airlines HR Assistant")
 
-    chatbot = gr.Chatbot(
-        height=500
-    )
+    chatbot = gr.Chatbot(height=500)
 
     msg = gr.Textbox(
         placeholder="Ask HR policy questions..."
@@ -36,7 +31,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
     )
 
     clear.click(
-        lambda: None,
+        lambda: [],
         None,
         chatbot,
         queue=False
