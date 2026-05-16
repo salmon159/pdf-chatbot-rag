@@ -1,7 +1,7 @@
 
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
-LLM_MODEL = "google/flan-t5-small"
+LLM_MODEL = "google/flan-t5-base"
 
 PDF_PATH = "data/manual.pdf"
 
