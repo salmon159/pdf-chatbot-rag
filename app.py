@@ -2,21 +2,36 @@ import gradio as gr
 
 from rag_pipeline import ask_question
 
-def respond(message, chat_history):
+def respond(message, history):
 
+    if history is None:
+        history = []
+
+    # Add user message
+    history.append({
+        "role": "user",
+        "content": message
+    })
+
+    # Generate bot response
     bot_message = ask_question(message)
 
-    chat_history.append(
-        (message, bot_message)
-    )
+    # Add assistant response
+    history.append({
+        "role": "assistant",
+        "content": bot_message
+    })
 
-    return "", chat_history
+    return history, history
 
 with gr.Blocks() as demo:
 
     gr.Markdown("# Airlines HR Assistant")
 
-    chatbot = gr.Chatbot(height=500)
+    chatbot = gr.Chatbot(
+        type="messages",
+        height=500
+    )
 
     msg = gr.Textbox(
         placeholder="Ask HR policy questions..."
@@ -26,14 +41,13 @@ with gr.Blocks() as demo:
 
     msg.submit(
         respond,
-        [msg, chatbot],
-        [msg, chatbot]
+        inputs=[msg, chatbot],
+        outputs=[chatbot, chatbot]
     )
 
     clear.click(
         lambda: [],
-        None,
-        chatbot,
+        outputs=chatbot,
         queue=False
     )
 
