@@ -1,25 +1,22 @@
-import requests
-import os
+from huggingface_hub import hf_hub_download
+
+from llama_cpp import Llama
 
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
 from config import *
-
-HF_TOKEN = os.getenv("HF_API_TOKEN")
-
-API_URL = f"https://api-inference.huggingface.co/models/{LLM_MODEL}"
-
-headers = {
-    "Authorization": f"Bearer {HF_TOKEN}"
-}
+from prompts import SYSTEM_PROMPT
 
 retriever = None
+llm = None
 
-def load_retriever():
+def load_components():
 
     global retriever
+    global llm
 
+    # Load vector database
     if retriever is None:
 
         print("Loading embeddings...")
@@ -42,75 +39,63 @@ def load_retriever():
 
         print("Retriever loaded.")
 
-    return retriever
+    # Load GGUF model
+    if llm is None:
 
-def query_llm(prompt):
+        print("Downloading GGUF model...")
 
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 64
-        }
-    }
-
-    try:
-
-        response = requests.post(
-            API_URL,
-            headers=headers,
-            json=payload,
-            timeout=20
+        model_path = hf_hub_download(
+            repo_id=GGUF_REPO_ID,
+            filename=GGUF_FILENAME
         )
 
-        print("STATUS:", response.status_code)
+        print("Loading Mistral GGUF model...")
 
-        if response.status_code != 200:
+        llm = Llama(
+            model_path=model_path,
+            n_ctx=2048,
+            n_threads=4,
+            verbose=False
+        )
 
-            print(response.text)
-
-            return f"HF API Error: {response.status_code}"
-
-        result = response.json()
-
-        print(result)
-
-        if isinstance(result, list):
-
-            return result[0].get(
-                "generated_text",
-                "No response generated."
-            )
-
-        if isinstance(result, dict):
-
-            if "error" in result:
-
-                return result["error"]
-
-        return str(result)
-
-    except Exception as e:
-
-        return f"ERROR: {str(e)}"
+        print("LLM loaded.")
 
 def ask_question(query):
 
-    retriever_instance = load_retriever()
+    load_components()
 
-    docs = retriever_instance.invoke(query)
+    docs = retriever.invoke(query)
 
     context = "\n".join(
         [doc.page_content for doc in docs]
     )
 
     prompt = f"""
-Answer the question using ONLY the context below.
+[INST]
 
-Context:
+{SYSTEM_PROMPT}
+
+###Context:
 {context}
 
-Question:
+###Question:
 {query}
+
+[/INST]
 """
 
-    return query_llm(prompt)
+    try:
+
+        output = llm(
+            prompt,
+            max_tokens=256,
+            temperature=0.1
+        )
+
+        answer = output["choices"][0]["text"]
+
+        return answer.strip()
+
+    except Exception as e:
+
+        return f"Error: {str(e)}"
