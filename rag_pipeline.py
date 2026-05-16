@@ -5,7 +5,6 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
 from config import *
-from prompts import SYSTEM_PROMPT
 
 HF_TOKEN = os.getenv("HF_API_TOKEN")
 
@@ -15,10 +14,9 @@ headers = {
     "Authorization": f"Bearer {HF_TOKEN}"
 }
 
-# Global cache
 retriever = None
 
-def load_vectorstore():
+def load_retriever():
 
     global retriever
 
@@ -30,7 +28,7 @@ def load_vectorstore():
             model_name=MODEL_NAME
         )
 
-        print("Loading vector database...")
+        print("Loading FAISS index...")
 
         vector_db = FAISS.load_local(
             VECTOR_DB_PATH,
@@ -42,7 +40,7 @@ def load_vectorstore():
             search_kwargs={"k": 2}
         )
 
-        print("Retriever ready.")
+        print("Retriever loaded.")
 
     return retriever
 
@@ -51,8 +49,7 @@ def query_llm(prompt):
     payload = {
         "inputs": prompt,
         "parameters": {
-            "max_new_tokens": 128,
-            "temperature": 0.1
+            "max_new_tokens": 64
         }
     }
 
@@ -62,54 +59,41 @@ def query_llm(prompt):
             API_URL,
             headers=headers,
             json=payload,
-            timeout=60
+            timeout=20
         )
+
+        print("STATUS:", response.status_code)
 
         if response.status_code != 200:
 
-            return f"API Error: {response.status_code}"
+            return f"HF API Error: {response.status_code}"
 
-        try:
-
-            result = response.json()
-
-        except Exception:
-
-            return "The model service is temporarily unavailable. Please try again."
+        result = response.json()
 
         print(result)
+
+        if isinstance(result, list):
+
+            return result[0].get(
+                "generated_text",
+                "No response generated."
+            )
 
         if isinstance(result, dict):
 
             if "error" in result:
 
-                return f"Model Error: {result['error']}"
+                return result["error"]
 
-            if "estimated_time" in result:
-
-                return "Model is loading. Please try again in a few seconds."
-
-        if isinstance(result, list):
-
-            if len(result) > 0:
-
-                if "generated_text" in result[0]:
-
-                    return result[0]["generated_text"]
-
-        return "I couldn't generate a response."
-
-    except requests.exceptions.Timeout:
-
-        return "The request timed out. Please try again."
+        return str(result)
 
     except Exception as e:
 
-        return f"Unexpected Error: {str(e)}"
+        return f"ERROR: {str(e)}"
 
 def ask_question(query):
 
-    retriever_instance = load_vectorstore()
+    retriever_instance = load_retriever()
 
     docs = retriever_instance.invoke(query)
 
@@ -118,17 +102,13 @@ def ask_question(query):
     )
 
     prompt = f"""
-{SYSTEM_PROMPT}
+Answer the question using ONLY the context below.
 
-###Context:
+Context:
 {context}
 
-###Question:
+Question:
 {query}
-
-Answer:
 """
 
-    answer = query_llm(prompt)
-
-    return answer
+    return query_llm(prompt)
