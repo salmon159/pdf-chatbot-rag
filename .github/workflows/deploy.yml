@@ -29,7 +29,10 @@ jobs:
 
           git clone https://mdsalmon159:$HF_TOKEN@huggingface.co/spaces/mdsalmon159/hrchatbot hf-space
 
-          rsync -av --exclude='.git' ./ hf-space/
+          rsync -av \
+          --exclude='.git' \
+          --exclude='data/manual.pdf' \
+          ./ hf-space/
 
           cd hf-space
 
