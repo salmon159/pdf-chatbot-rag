@@ -41,42 +41,63 @@ def query_llm(prompt):
         }
     }
 
-    response = requests.post(
-        API_URL,
-        headers=headers,
-        json=payload,
-        timeout=60
-    )
+    try:
 
-    result = response.json()
+        response = requests.post(
+            API_URL,
+            headers=headers,
+            json=payload,
+            timeout=60
+        )
 
-    print(result)
+        # Check HTTP status
+        if response.status_code != 200:
 
-    # Handle model loading / API errors
-    if isinstance(result, dict):
+            return f"API Error: {response.status_code}"
 
-        if "error" in result:
+        # Safe JSON parsing
+        try:
+            result = response.json()
 
-            return f"Model Error: {result['error']}"
+        except Exception:
 
-        if "estimated_time" in result:
+            return "The model service is temporarily unavailable. Please try again."
 
-            return "Model is loading. Please try again in a few seconds."
+        print(result)
 
-    # Handle successful response
-    if isinstance(result, list):
+        # Handle API errors
+        if isinstance(result, dict):
 
-        if len(result) > 0:
+            if "error" in result:
 
-            if "generated_text" in result[0]:
+                return f"Model Error: {result['error']}"
 
-                return result[0]["generated_text"]
+            if "estimated_time" in result:
 
-    return "I couldn't generate a response."
+                return "Model is loading. Please try again in a few seconds."
+
+        # Handle successful response
+        if isinstance(result, list):
+
+            if len(result) > 0:
+
+                if "generated_text" in result[0]:
+
+                    return result[0]["generated_text"]
+
+        return "I couldn't generate a response."
+
+    except requests.exceptions.Timeout:
+
+        return "The request timed out. Please try again."
+
+    except Exception as e:
+
+        return f"Unexpected Error: {str(e)}"
 
 def ask_question(query):
 
-    docs = retriever.get_relevant_documents(query)
+    docs = retriever.invoke(query)
 
     context = "\n".join(
         [doc.page_content for doc in docs]
