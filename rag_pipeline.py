@@ -15,21 +15,36 @@ headers = {
     "Authorization": f"Bearer {HF_TOKEN}"
 }
 
-# Load embeddings
-embeddings = HuggingFaceEmbeddings(
-    model_name=MODEL_NAME
-)
+# Global cache
+retriever = None
 
-# Load vector DB
-vector_db = FAISS.load_local(
-    VECTOR_DB_PATH,
-    embeddings,
-    allow_dangerous_deserialization=True
-)
+def load_vectorstore():
 
-retriever = vector_db.as_retriever(
-    search_kwargs={"k": 2}
-)
+    global retriever
+
+    if retriever is None:
+
+        print("Loading embeddings...")
+
+        embeddings = HuggingFaceEmbeddings(
+            model_name=MODEL_NAME
+        )
+
+        print("Loading vector database...")
+
+        vector_db = FAISS.load_local(
+            VECTOR_DB_PATH,
+            embeddings,
+            allow_dangerous_deserialization=True
+        )
+
+        retriever = vector_db.as_retriever(
+            search_kwargs={"k": 2}
+        )
+
+        print("Retriever ready.")
+
+    return retriever
 
 def query_llm(prompt):
 
@@ -50,13 +65,12 @@ def query_llm(prompt):
             timeout=60
         )
 
-        # Check HTTP status
         if response.status_code != 200:
 
             return f"API Error: {response.status_code}"
 
-        # Safe JSON parsing
         try:
+
             result = response.json()
 
         except Exception:
@@ -65,7 +79,6 @@ def query_llm(prompt):
 
         print(result)
 
-        # Handle API errors
         if isinstance(result, dict):
 
             if "error" in result:
@@ -76,7 +89,6 @@ def query_llm(prompt):
 
                 return "Model is loading. Please try again in a few seconds."
 
-        # Handle successful response
         if isinstance(result, list):
 
             if len(result) > 0:
@@ -97,7 +109,9 @@ def query_llm(prompt):
 
 def ask_question(query):
 
-    docs = retriever.invoke(query)
+    retriever_instance = load_vectorstore()
+
+    docs = retriever_instance.invoke(query)
 
     context = "\n".join(
         [doc.page_content for doc in docs]
