@@ -7,10 +7,10 @@ def respond(message, history):
     if history is None:
         history = []
 
-    bot_message = ask_question(message)
+    response = ask_question(message)
 
     history.append(
-        (message, bot_message)
+        (message, response)
     )
 
     return "", history
@@ -19,12 +19,10 @@ with gr.Blocks() as demo:
 
     gr.Markdown("# Airlines HR Assistant")
 
-    chatbot = gr.Chatbot(
-        height=500
-    )
+    chatbot = gr.Chatbot(height=500)
 
     msg = gr.Textbox(
-        placeholder="Ask HR policy questions..."
+        placeholder="Ask a question..."
     )
 
     clear = gr.Button("Clear Chat")
