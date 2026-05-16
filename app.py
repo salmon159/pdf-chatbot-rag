@@ -7,29 +7,19 @@ def respond(message, history):
     if history is None:
         history = []
 
-    # Add user message
-    history.append({
-        "role": "user",
-        "content": message
-    })
-
-    # Generate bot response
     bot_message = ask_question(message)
 
-    # Add assistant response
-    history.append({
-        "role": "assistant",
-        "content": bot_message
-    })
+    history.append(
+        (message, bot_message)
+    )
 
-    return history, history
+    return "", history
 
 with gr.Blocks() as demo:
 
     gr.Markdown("# Airlines HR Assistant")
 
     chatbot = gr.Chatbot(
-        type="messages",
         height=500
     )
 
@@ -41,13 +31,14 @@ with gr.Blocks() as demo:
 
     msg.submit(
         respond,
-        inputs=[msg, chatbot],
-        outputs=[chatbot, chatbot]
+        [msg, chatbot],
+        [msg, chatbot]
     )
 
     clear.click(
-        lambda: [],
-        outputs=chatbot,
+        lambda: None,
+        None,
+        chatbot,
         queue=False
     )
 
