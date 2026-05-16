@@ -66,9 +66,9 @@ def query_llm(prompt):
 
         if response.status_code != 200:
 
-    print(response.text)
+            print(response.text)
 
-    return f"HF API Error: {response.status_code}"
+            return f"HF API Error: {response.status_code}"
 
         result = response.json()
 
